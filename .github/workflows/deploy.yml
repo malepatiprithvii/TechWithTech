@@ -30,25 +30,25 @@ jobs:
           # Create archive excluding heavy dev files
           tar --exclude='node_modules' --exclude='.git' --exclude='.github' -czf deploy.tar.gz .
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
       - name: Deploy to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "deploy.tar.gz"
-          target: "~/"
-
-      - name: Execute remote commands
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_KEY }}
-          timeout: 30m
-          command_timeout: 30m
-          debug: true
-          script: |
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USERNAME }}
+        run: |
+          # Disable strict host key checking to avoid interactive prompt
+          # Upload file
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa deploy.tar.gz $USER@$HOST:~/deploy.tar.gz
+          
+          # Execute remote commands
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $USER@$HOST << 'EOF'
+            set -e # Stop on error
+            
             # Add Swap if missing (prevents freezing on t3.micro)
             if [ ! -f /swapfile ]; then
               echo "Creating 2GB swapfile..."
@@ -91,3 +91,4 @@ jobs:
             
             # Cleanup
             rm ~/deploy.tar.gz
+          EOF
