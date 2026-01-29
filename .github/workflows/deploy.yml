@@ -46,6 +46,16 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
+            # Add Swap if missing (prevents freezing on t3.micro)
+            if [ ! -f /swapfile ]; then
+              echo "Creating 2GB swapfile..."
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            fi
+
             # Install Docker if missing
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
