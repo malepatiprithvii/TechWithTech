@@ -6,13 +6,14 @@ function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    setError("");
     try {
       const res = await api.post("/login", { email, password });
       localStorage.setItem("user_id", res.data.user_id);
       localStorage.setItem("user_type", res.data.type);
-      alert("Login successful!");
       
       // Navigate based on user type if needed, or just to a dashboard
       if (res.data.type === "school") {
@@ -22,13 +23,14 @@ function Login() {
       }
     } catch (error) {
       console.error(error);
-      alert("Invalid login credentials");
+      setError("Invalid login credentials. Please try again.");
     }
   };
 
   return (
     <div className="page">
       <h2>Login</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
       <input 
         placeholder="Email" 
         value={email}

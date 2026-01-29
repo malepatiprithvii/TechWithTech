@@ -16,24 +16,27 @@ function Signup() {
     zip: ""
   });
 
+  const [error, setError] = useState("");
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSignup = async () => {
+    setError("");
     try {
       await api.post("/signup", form);
-      alert("Signup successful!");
       navigate("/");
     } catch (error) {
       console.error(error);
-      alert("Signup failed");
+      setError("Signup failed. Please check your details and try again.");
     }
   };
 
   return (
     <div className="page">
       <h2>Signup</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <input name="email" placeholder="Email" onChange={handleChange} />
       <input name="password" type="password" placeholder="Password" onChange={handleChange} />
