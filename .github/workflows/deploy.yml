@@ -45,6 +45,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
+          timeout: 30m
+          command_timeout: 30m
+          debug: true
           script: |
             # Add Swap if missing (prevents freezing on t3.micro)
             if [ ! -f /swapfile ]; then
