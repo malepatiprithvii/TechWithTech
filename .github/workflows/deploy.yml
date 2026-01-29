@@ -1,0 +1,64 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        env:
+          REACT_APP_API_URL: http://${{ secrets.EC2_HOST }}:8000
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create deployment package
+        run: |
+          # Create archive excluding heavy dev files
+          tar --exclude='node_modules' --exclude='.git' --exclude='.github' -czf deploy.tar.gz .
+
+      - name: Deploy to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "deploy.tar.gz"
+          target: "~/"
+
+      - name: Execute remote commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            # Clean up old app
+            sudo rm -rf app
+            mkdir -p app
+            
+            # Extract new version
+            sudo tar -xzf deploy.tar.gz -C app
+            sudo chown -R ubuntu:ubuntu app
+            
+            # Start services
+            cd app
+            # Rebuild ensures new static files are copied to nginx container
+            # Backend build is fast and low-memory
+            docker compose down
+            docker compose up -d --build
+            
+            # Cleanup
+            rm ~/deploy.tar.gz
