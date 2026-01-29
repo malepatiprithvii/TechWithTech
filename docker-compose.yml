@@ -8,7 +8,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/dbname
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:13
@@ -18,6 +19,11 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=dbname
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d dbname"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
