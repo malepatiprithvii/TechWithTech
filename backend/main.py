@@ -1,40 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from typing import List
-from database import SessionLocal, engine
-import models, schemas
+from fastapi.middleware.cors import CORSMiddleware
+from database import init_db, get_db_connection
+import schemas
 
-# Create tables
-models.Base.metadata.create_all(bind=engine)
-
-# Try to update schema if tables exist but columns don't
-try:
-    with engine.connect() as conn:
-        conn.execute(text("COMMIT")) # Ensure we are not in a transaction block
-        try:
-            conn.execute(text("ALTER TABLE p_requests ADD COLUMN status VARCHAR DEFAULT 'Pending'"))
-        except Exception as e:
-            print(f"Migration note: {e}")
-        try:
-            conn.execute(text("ALTER TABLE p_requests ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
-        except Exception as e:
-            print(f"Migration note: {e}")
-        try:
-            conn.execute(text("ALTER TABLE p_donations ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
-        except Exception as e:
-            print(f"Migration note: {e}")
-        try:
-            conn.execute(text("ALTER TABLE p_donations ADD COLUMN shipping_number VARCHAR DEFAULT 'PENDING-123'"))
-        except Exception as e:
-            print(f"Migration note: {e}")
-except Exception as e:
-    print(f"Database connection/migration error: {e}")
+# Initialize database tables
+init_db()
 
 app = FastAPI()
 
 # CORS (for React)
-from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,58 +17,94 @@ app.add_middleware(
 )
 
 def get_db():
-    db = SessionLocal()
+    conn = get_db_connection()
     try:
-        yield db
+        yield conn
     finally:
-        db.close()
+        conn.close()
 
 @app.post("/signup")
-def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    u = models.User(**user.dict())
-    db.add(u)
-    db.commit()
-    return {"message": "User created"}
+def signup(user: schemas.UserCreate, conn = Depends(get_db)):
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO p_users (email, password, name, type, address, city, state, zip)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (user.email, user.password, user.name, user.type, user.address, user.city, user.state, user.zip))
+        conn.commit()
+        return {"message": "User created"}
+    except Exception as e:
+        conn.rollback()
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create user")
 
 @app.post("/login")
-def login(data: schemas.LoginSchema, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(
-        models.User.email == data.email,
-        models.User.password == data.password
-    ).first()
+def login(data: schemas.LoginSchema, conn = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM p_users WHERE email = %s AND password = %s", (data.email, data.password))
+    user = cur.fetchone()
+    
     if not user:
         raise HTTPException(status_code=401, detail="Invalid login credentials")
-    return {"message": "Success", "user_id": user.id, "type": user.type}
+    
+    return {"message": "Success", "user_id": user['id'], "type": user['type']}
 
 @app.post("/donate")
-def donate(data: schemas.DonationSchema, db: Session = Depends(get_db)):
-    d = models.Donation(**data.dict())
-    db.add(d)
-    db.commit()
-    return {"message": "Donation saved"}
+def donate(data: schemas.DonationSchema, conn = Depends(get_db)):
+    try:
+        print(f"Received donation: {data}")
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO p_donations_v2 (user_id, item, quantity)
+            VALUES (%s, %s, %s)
+        """, (data.user_id, data.item, data.quantity))
+        conn.commit()
+        print("Donation inserted successfully")
+        return {"message": "Donation saved"}
+    except Exception as e:
+        conn.rollback()
+        print(f"Error inserting donation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/request")
-def request_item(data: schemas.RequestSchema, db: Session = Depends(get_db)):
-    r = models.Request(**data.dict())
-    db.add(r)
-    db.commit()
-    return {"message": "Request saved"}
+def request_item(data: schemas.RequestSchema, conn = Depends(get_db)):
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO p_requests (user_id, item, quantity)
+            VALUES (%s, %s, %s)
+        """, (data.user_id, data.item, data.quantity))
+        conn.commit()
+        return {"message": "Request saved"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/requests/{user_id}", response_model=List[schemas.RequestResponse])
-def get_user_requests(user_id: int, db: Session = Depends(get_db)):
-    return db.query(models.Request).filter(models.Request.user_id == user_id).all()
+@app.get("/requests/{user_id}", response_model=list[schemas.RequestResponse])
+def get_user_requests(user_id: int, conn = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM p_requests WHERE user_id = %s", (user_id,))
+    rows = cur.fetchall()
+    return rows
 
-@app.get("/donations/{user_id}", response_model=List[schemas.DonationResponse])
-def get_user_donations(user_id: int, db: Session = Depends(get_db)):
-    return db.query(models.Donation).filter(models.Donation.user_id == user_id).all()
+@app.get("/donations/{user_id}", response_model=list[schemas.DonationResponse])
+def get_user_donations(user_id: int, conn = Depends(get_db)):
+    print(f"Fetching donations for user_id: {user_id}")
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM p_donations_v2 WHERE user_id = %s", (user_id,))
+    rows = cur.fetchall()
+    print(f"Found {len(rows)} donations")
+    return rows
 
-@app.get("/available-requests", response_model=List[schemas.SchoolRequestResponse])
-def get_available_requests(db: Session = Depends(get_db)):
-    results = db.query(models.Request, models.User.name).join(
-        models.User, models.Request.user_id == models.User.id
-    ).filter(models.Request.status == "Pending").all()
-    
-    return [
-        {**schemas.RequestResponse.from_orm(req).dict(), "school_name": school_name}
-        for req, school_name in results
-    ]
+@app.get("/available-requests", response_model=list[schemas.SchoolRequestResponse])
+def get_available_requests(conn = Depends(get_db)):
+    cur = conn.cursor()
+    query = """
+        SELECT r.*, u.name as school_name 
+        FROM p_requests r
+        JOIN p_users u ON r.user_id = u.id
+        WHERE r.status = 'Pending'
+    """
+    cur.execute(query)
+    rows = cur.fetchall()
+    return rows
