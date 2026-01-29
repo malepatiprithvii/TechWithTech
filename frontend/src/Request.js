@@ -58,7 +58,10 @@ function Request() {
   return (
     <div className="page">
       {/* Brand Header */}
-      <div style={{ textAlign: "right", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginBottom: "20px" }}>
+        <button onClick={() => window.location.href = "/donate"} style={{ padding: "5px 10px", fontSize: "12px", background: "#C07A40" }}>
+            Switch to Donations
+        </button>
         <button onClick={() => {
             localStorage.clear();
             window.location.href = "/";
