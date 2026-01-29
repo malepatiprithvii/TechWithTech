@@ -1,56 +1,102 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: #f7f7f7;
-  color: #222;
-}
-
-code {
-  font-family: Consolas, 'Courier New', monospace;
+  background: #fff;
+  color: #333;
 }
 
 div {
   box-sizing: border-box;
 }
 
-h2 {
-  margin: 16px 0;
+h2, h3 {
   font-weight: 600;
+  color: #333;
 }
 
-input, button {
+/* Inputs matching the beige style */
+input, select {
   display: block;
   width: 100%;
   max-width: 360px;
-  margin: 8px auto;
+  margin: 12px 0;
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid #ccc;
+  background-color: #EDE0C8; /* Beige */
   font-size: 14px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
 }
 
+/* Buttons matching the orange/brown style */
 button {
-  background: #2d6cdf;
+  background: #C07A40; /* Brown/Orange */
   color: #fff;
   border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
   cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
 }
 
 button:hover {
-  background: #245ac0;
+  background: #A06030;
 }
 
 a {
-  color: #2d6cdf;
-  text-decoration: none;
+  color: #333;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .page {
   width: 100%;
-  max-width: 480px;
+  max-width: 800px; /* Wider for tables */
   margin: 40px auto;
   padding: 24px;
   background: #fff;
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
+}
+
+/* Table Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+th, td {
+  text-align: left;
+  padding: 12px;
+  border: 1px solid #ddd;
+}
+
+th {
+  background-color: #4A403A; /* Dark Brown/Grey */
+  color: white;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.section-title {
+  font-size: 18px;
+  margin-bottom: 10px;
+  margin-top: 30px;
+}
+
+.auth-container {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.header-brand {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  font-size: 20px;
+  font-weight: bold;
 }

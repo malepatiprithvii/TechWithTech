@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
 from database import Base
 
 class User(Base):
@@ -21,6 +22,8 @@ class Donation(Base):
     user_id = Column(Integer)
     item = Column(String)
     quantity = Column(Integer)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    shipping_number = Column(String, default="PENDING-123")
 
 class Request(Base):
     __tablename__ = "p_requests"
@@ -29,3 +32,5 @@ class Request(Base):
     user_id = Column(Integer)
     item = Column(String)
     quantity = Column(Integer)
+    status = Column(String, default="Pending")
+    date = Column(DateTime(timezone=True), server_default=func.now())

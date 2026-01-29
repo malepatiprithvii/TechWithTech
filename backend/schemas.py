@@ -27,6 +27,8 @@ class UserResponse(UserBase):
         orm_mode = True
 
 
+from datetime import datetime
+
 class LoginSchema(BaseModel):
     email: str
     password: str
@@ -36,7 +38,26 @@ class DonationSchema(BaseModel):
     item: str
     quantity: int
 
+class DonationResponse(DonationSchema):
+    id: int
+    date: datetime
+    shipping_number: Optional[str] = None
+    
+    class Config:
+        orm_mode = True
+
 class RequestSchema(BaseModel):
     user_id: int
     item: str
     quantity: int
+
+class RequestResponse(RequestSchema):
+    id: int
+    status: str
+    date: datetime
+
+    class Config:
+        orm_mode = True
+
+class SchoolRequestResponse(RequestResponse):
+    school_name: str

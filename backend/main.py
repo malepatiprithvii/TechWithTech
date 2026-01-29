@@ -1,9 +1,35 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import List
 from database import SessionLocal, engine
 import models, schemas
 
+# Create tables
 models.Base.metadata.create_all(bind=engine)
+
+# Try to update schema if tables exist but columns don't
+try:
+    with engine.connect() as conn:
+        conn.execute(text("COMMIT")) # Ensure we are not in a transaction block
+        try:
+            conn.execute(text("ALTER TABLE p_requests ADD COLUMN status VARCHAR DEFAULT 'Pending'"))
+        except Exception as e:
+            print(f"Migration note: {e}")
+        try:
+            conn.execute(text("ALTER TABLE p_requests ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
+        except Exception as e:
+            print(f"Migration note: {e}")
+        try:
+            conn.execute(text("ALTER TABLE p_donations ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
+        except Exception as e:
+            print(f"Migration note: {e}")
+        try:
+            conn.execute(text("ALTER TABLE p_donations ADD COLUMN shipping_number VARCHAR DEFAULT 'PENDING-123'"))
+        except Exception as e:
+            print(f"Migration note: {e}")
+except Exception as e:
+    print(f"Database connection/migration error: {e}")
 
 app = FastAPI()
 
@@ -37,7 +63,7 @@ def login(data: schemas.LoginSchema, db: Session = Depends(get_db)):
         models.User.password == data.password
     ).first()
     if not user:
-        return {"error": "Invalid login"}
+        raise HTTPException(status_code=401, detail="Invalid login credentials")
     return {"message": "Success", "user_id": user.id, "type": user.type}
 
 @app.post("/donate")
@@ -53,3 +79,22 @@ def request_item(data: schemas.RequestSchema, db: Session = Depends(get_db)):
     db.add(r)
     db.commit()
     return {"message": "Request saved"}
+
+@app.get("/requests/{user_id}", response_model=List[schemas.RequestResponse])
+def get_user_requests(user_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Request).filter(models.Request.user_id == user_id).all()
+
+@app.get("/donations/{user_id}", response_model=List[schemas.DonationResponse])
+def get_user_donations(user_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Donation).filter(models.Donation.user_id == user_id).all()
+
+@app.get("/available-requests", response_model=List[schemas.SchoolRequestResponse])
+def get_available_requests(db: Session = Depends(get_db)):
+    results = db.query(models.Request, models.User.name).join(
+        models.User, models.Request.user_id == models.User.id
+    ).filter(models.Request.status == "Pending").all()
+    
+    return [
+        {**schemas.RequestResponse.from_orm(req).dict(), "school_name": school_name}
+        for req, school_name in results
+    ]
