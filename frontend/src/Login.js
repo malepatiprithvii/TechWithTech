@@ -53,7 +53,7 @@ function Login() {
         <button onClick={handleLogin} style={{width: '100%', maxWidth: '360px'}}>Login</button>
         
         <div style={{display: 'flex', justifyContent: 'space-between', maxWidth: '360px', margin: '20px auto'}}>
-            <a href="#">Forgot Password</a>
+            <a href="/feed" style={{fontWeight: 'bold'}}>View Community Requests</a>
             <a href="/signup">Signup</a>
         </div>
       </div>

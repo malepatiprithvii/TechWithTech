@@ -52,6 +52,8 @@ import Signup from "./Signup";
 import Welcome from "./Welcome";
 import Donate from "./Donate";
 import Request from "./Request";
+import RequestsFeed from "./RequestsFeed";
+
 function App() {
   return (
     <Router>
@@ -61,6 +63,7 @@ function App() {
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/donate" element={<Donate />} />
         <Route path="/request" element={<Request />} />
+        <Route path="/feed" element={<RequestsFeed />} />
       </Routes>
     </Router>
   );
