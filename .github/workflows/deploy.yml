@@ -27,8 +27,8 @@ jobs:
 
       - name: Create deployment package
         run: |
-          # Create archive excluding heavy dev files
-          tar --exclude='node_modules' --exclude='.git' --exclude='.github' -czf deploy.tar.gz .
+          # Create archive excluding heavy dev files and volatile directories
+          tar --exclude='node_modules' --exclude='frontend/node_modules' --exclude='.git' --exclude='.github' --exclude='__pycache__' --exclude='*.pyc' -czf deploy.tar.gz .
 
       - name: Setup SSH
         run: |
