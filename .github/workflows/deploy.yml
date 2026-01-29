@@ -22,7 +22,7 @@ jobs:
           REACT_APP_API_URL: http://${{ secrets.EC2_HOST }}:8000
           CI: false
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Create deployment package
